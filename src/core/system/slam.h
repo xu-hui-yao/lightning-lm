@@ -10,6 +10,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <string>
 
+#include "geometry_msgs/msg/pose_array.hpp"
 #include "lightning/srv/save_map.hpp"
 #include "livox_ros_driver2/msg/custom_msg.hpp"
 
@@ -74,6 +75,9 @@ class SlamSystem {
     /// 实时模式下的spin
     void Spin();
 
+    /// 发布话题，发出ROS2地图和位置姿态信息
+    void Publish(bool use_lio_pose = false);
+
    private:
     /// ros端保存地图的实现
     void SaveMap(const SaveMapService::Request::SharedPtr request, SaveMapService::Response::SharedPtr response);
@@ -101,6 +105,17 @@ class SlamSystem {
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_ = nullptr;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_ = nullptr;
     rclcpp::Subscription<livox_ros_driver2::msg::CustomMsg>::SharedPtr livox_sub_ = nullptr;
+
+    /// ros2 publishers
+    int publish_interval_ = 1;
+    int publish_interval_counter_ = 0;
+    bool publish_ = false;
+    rclcpp::Node::SharedPtr pub_node_;
+    std::string map_pub_topic_;
+    std::string pose_pub_topic_;
+
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> map_pub_ = nullptr;
+    std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseArray>> pose_pub_ = nullptr;
 };
 }  // namespace lightning
 

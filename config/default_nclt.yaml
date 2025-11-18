@@ -67,6 +67,11 @@ loop_closing:
   ndt_score_th: 1.0     # ndt位姿分值
   with_height: true
 
+if_publish: true
+publish:
+  map_topic: "lightning/map"
+  pose_topic: "lightning/pose"
+  interval: 1
 
 ### localization ================================================================================================
 lidar_loc:

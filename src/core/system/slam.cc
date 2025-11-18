@@ -3,6 +3,11 @@
 //
 
 #include "core/system/slam.h"
+#include <pcl_conversions/pcl_conversions.h>
+#include <yaml-cpp/yaml.h>
+#include <filesystem>
+#include <opencv2/opencv.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include "core/g2p5/g2p5.h"
 #include "core/lio/laser_mapping.h"
 #include "core/loop_closing/loop_closing.h"
@@ -10,13 +15,13 @@
 #include "ui/pangolin_window.h"
 #include "wrapper/ros_utils.h"
 
-#include <yaml-cpp/yaml.h>
-#include <filesystem>
-#include <opencv2/opencv.hpp>
-
 namespace lightning {
 
 SlamSystem::SlamSystem(lightning::SlamSystem::Options options) : options_(options) {
+    if (!rclcpp::ok()) {
+        LOG(WARNING) << "ROS2 context is not initialized";
+    }
+
     /// handle ctrl-c
     signal(SIGINT, lightning::debug::SigHandle);
 }
@@ -118,6 +123,25 @@ bool SlamSystem::Init(const std::string& yaml_path) {
                                          SaveMapService::Response::SharedPtr res) { SaveMap(req, res); });
 
         LOG(INFO) << "online slam node has been created.";
+    }
+
+    publish_ = yaml["if_publish"].as<bool>();
+    if (publish_) {
+        // node
+        pub_node_ = std::make_shared<rclcpp::Node>("lightning_slam_pub");
+        // topic
+        map_pub_topic_ = yaml["publish"]["map_topic"].as<std::string>();
+        pose_pub_topic_ = yaml["publish"]["pose_topic"].as<std::string>();
+        // publisher
+        rclcpp::QoS qos_profile_realtime(10);  // Higher rate, adjust this value based on your requirements
+        qos_profile_realtime.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);  // Reliable delivery
+        qos_profile_realtime.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);    // Reduce message backlog
+        qos_profile_realtime.best_effort();
+        map_pub_ = pub_node_->create_publisher<sensor_msgs::msg::PointCloud2>(map_pub_topic_, qos_profile_realtime);
+        pose_pub_ = pub_node_->create_publisher<geometry_msgs::msg::PoseArray>(pose_pub_topic_, qos_profile_realtime);
+        // publish interval
+        publish_interval_ = yaml["publish"]["interval"].as<int>();
+        publish_interval_counter_ = 0;
     }
 
     return true;
@@ -268,6 +292,8 @@ void SlamSystem::ProcessLidar(const sensor_msgs::msg::PointCloud2::SharedPtr& cl
     if (ui_) {
         ui_->UpdateKF(cur_kf_);
     }
+
+    Publish(false);
 }
 
 void SlamSystem::ProcessLidar(const livox_ros_driver2::msg::CustomMsg::SharedPtr& cloud) {
@@ -300,11 +326,58 @@ void SlamSystem::ProcessLidar(const livox_ros_driver2::msg::CustomMsg::SharedPtr
     if (ui_) {
         ui_->UpdateKF(cur_kf_);
     }
+
+    Publish(false);
 }
 
 void SlamSystem::Spin() {
     if (options_.online_mode_ && node_ != nullptr) {
         spin(node_);
+    }
+}
+
+void SlamSystem::Publish(bool use_lio_pose) {
+    if (!publish_ || !lio_) return;
+    publish_interval_counter_ = (publish_interval_counter_ + 1) % publish_interval_;
+    if (publish_interval_counter_ != 0) return;
+    CloudPtr global_map = lio_->GetGlobalMap(use_lio_pose);
+    if (global_map && !global_map->empty()) {
+        sensor_msgs::msg::PointCloud2 ros_cloud;
+        pcl::toROSMsg(*global_map, ros_cloud);
+        ros_cloud.header.stamp = pub_node_->now();
+        ros_cloud.header.frame_id = "map";
+        map_pub_->publish(ros_cloud);
+        LOG(INFO) << "Published " << global_map->size() << " points";
+    }
+
+    auto keyframes = lio_->GetAllKeyframes();
+    if (!keyframes.empty()) {
+        geometry_msgs::msg::PoseArray poses_msg;
+        poses_msg.header.stamp = pub_node_->now();
+        poses_msg.header.frame_id = "map";
+
+        for (const auto& kf : keyframes) {
+            if (!kf) continue;
+
+            geometry_msgs::msg::Pose pose_msg;
+            SE3 opt_pose = kf->GetOptPose();
+
+            pose_msg.position.x = opt_pose.translation().x();
+            pose_msg.position.y = opt_pose.translation().y();
+            pose_msg.position.z = opt_pose.translation().z();
+
+            auto quat = opt_pose.unit_quaternion();
+            pose_msg.orientation.x = quat.x();
+            pose_msg.orientation.y = quat.y();
+            pose_msg.orientation.z = quat.z();
+            pose_msg.orientation.w = quat.w();
+
+            poses_msg.poses.push_back(pose_msg);
+        }
+
+        pose_pub_->publish(poses_msg);
+
+        LOG(INFO) << "Published " << poses_msg.poses.size() << " keyframe poses";
     }
 }
 
