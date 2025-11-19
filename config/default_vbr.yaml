@@ -71,7 +71,7 @@ if_publish: true
 publish:
   map_topic: "lightning/map"
   pose_topic: "lightning/pose"
-  interval: 1
+  interval: 10
 
 ### localization ================================================================================================
 lidar_loc:

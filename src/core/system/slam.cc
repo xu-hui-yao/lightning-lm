@@ -133,12 +133,12 @@ bool SlamSystem::Init(const std::string& yaml_path) {
         map_pub_topic_ = yaml["publish"]["map_topic"].as<std::string>();
         pose_pub_topic_ = yaml["publish"]["pose_topic"].as<std::string>();
         // publisher
-        rclcpp::QoS qos_profile_realtime(10);  // Higher rate, adjust this value based on your requirements
-        qos_profile_realtime.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);  // Reliable delivery
-        qos_profile_realtime.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);    // Reduce message backlog
-        qos_profile_realtime.best_effort();
-        map_pub_ = pub_node_->create_publisher<sensor_msgs::msg::PointCloud2>(map_pub_topic_, qos_profile_realtime);
-        pose_pub_ = pub_node_->create_publisher<geometry_msgs::msg::PoseArray>(pose_pub_topic_, qos_profile_realtime);
+        rclcpp::QoS qos_realtime(10);
+        qos_realtime.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+        qos_realtime.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
+        qos_realtime.history(RMW_QOS_POLICY_HISTORY_KEEP_LAST);
+        map_pub_ = pub_node_->create_publisher<sensor_msgs::msg::PointCloud2>(map_pub_topic_, qos_realtime);
+        pose_pub_ = pub_node_->create_publisher<geometry_msgs::msg::PoseArray>(pose_pub_topic_, qos_realtime);
         // publish interval
         publish_interval_ = yaml["publish"]["interval"].as<int>();
         publish_interval_counter_ = 0;
