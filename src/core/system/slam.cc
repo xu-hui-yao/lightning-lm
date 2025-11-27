@@ -132,6 +132,7 @@ bool SlamSystem::Init(const std::string& yaml_path) {
         // topic
         map_pub_topic_ = yaml["publish"]["map_topic"].as<std::string>();
         pose_pub_topic_ = yaml["publish"]["pose_topic"].as<std::string>();
+        kf_count_pub_topic_ = yaml["publish"]["keyframe_topic"].as<std::string>();
         // publisher
         rclcpp::QoS qos_realtime(10);
         qos_realtime.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
@@ -139,6 +140,7 @@ bool SlamSystem::Init(const std::string& yaml_path) {
         qos_realtime.history(RMW_QOS_POLICY_HISTORY_KEEP_LAST);
         map_pub_ = pub_node_->create_publisher<sensor_msgs::msg::PointCloud2>(map_pub_topic_, qos_realtime);
         pose_pub_ = pub_node_->create_publisher<geometry_msgs::msg::PoseArray>(pose_pub_topic_, qos_realtime);
+        kf_count_pub_ = pub_node_->create_publisher<std_msgs::msg::UInt32>(kf_count_pub_topic_, qos_realtime);
         // publish interval
         publish_interval_ = yaml["publish"]["interval"].as<int>();
         publish_interval_counter_ = 0;
@@ -378,6 +380,18 @@ void SlamSystem::Publish(bool use_lio_pose) {
         pose_pub_->publish(poses_msg);
 
         LOG(INFO) << "Published " << poses_msg.poses.size() << " keyframe poses";
+
+        // Publish keyframe count
+        std_msgs::msg::UInt32 count_msg;
+        count_msg.data = static_cast<unsigned int>(keyframes.size());
+        kf_count_pub_->publish(count_msg);
+        LOG(INFO) << "Published keyframe count: " << count_msg.data;
+    } else {
+        // Publish zero if no keyframes
+        std_msgs::msg::UInt32 count_msg;
+        count_msg.data = 0;
+        kf_count_pub_->publish(count_msg);
+        LOG(INFO) << "Published keyframe count: 0";
     }
 }
 

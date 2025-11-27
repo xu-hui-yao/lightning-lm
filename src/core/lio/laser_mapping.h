@@ -103,7 +103,7 @@ class LaserMapping {
      * @param use_lio_pose
      * @return
      */
-    CloudPtr GetGlobalMap(bool use_lio_pose, bool use_voxel = true, float res = 0.1);
+    CloudPtr GetGlobalMap(bool use_lio_pose, bool use_voxel = true, float res = 0.001);
 
    private:
     // sync lidar with imu

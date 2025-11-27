@@ -71,6 +71,7 @@ if_publish: true
 publish:
   map_topic: "lightning/map"
   pose_topic: "lightning/pose"
+  keyframe_topic: "lightning/keyframe_count"
   interval: 10
 
 ### localization ================================================================================================

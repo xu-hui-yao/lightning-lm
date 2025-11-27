@@ -11,6 +11,7 @@
 #include <string>
 
 #include "geometry_msgs/msg/pose_array.hpp"
+#include "std_msgs/msg/u_int32.hpp"
 #include "lightning/srv/save_map.hpp"
 #include "livox_ros_driver2/msg/custom_msg.hpp"
 
@@ -113,9 +114,11 @@ class SlamSystem {
     rclcpp::Node::SharedPtr pub_node_;
     std::string map_pub_topic_;
     std::string pose_pub_topic_;
+    std::string kf_count_pub_topic_;
 
     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> map_pub_ = nullptr;
     std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseArray>> pose_pub_ = nullptr;
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::UInt32>> kf_count_pub_ = nullptr;
 };
 }  // namespace lightning
 
