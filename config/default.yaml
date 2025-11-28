@@ -4,6 +4,7 @@ common:
   lidar_topic: "points_raw"
   livox_lidar_topic: "/livox/lidar"
   imu_topic: "/livox/imu"
+  imu_in_g: true
 
 # fasterlio 参数
 fasterlio:

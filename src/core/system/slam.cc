@@ -39,6 +39,12 @@ bool SlamSystem::Init(const std::string& yaml_path) {
     options_.with_2dvisualization_ = yaml["system"]["with_2dui"].as<bool>();
     options_.with_gridmap_ = yaml["system"]["with_g2p5"].as<bool>();
     options_.step_on_kf_ = yaml["system"]["step_on_kf"].as<bool>();
+    imu_in_g_ = yaml["common"]["imu_in_g"].as<bool>();
+    if (imu_in_g_) {
+        LOG(INFO) << "use livox lidar, imu have to multiply g";
+    } else {
+        LOG(INFO) << "do not use livox lidar, imu is unchanged";
+    }
 
     if (options_.with_loop_closing_) {
         LOG(INFO) << "slam with loop closing";
@@ -100,10 +106,11 @@ bool SlamSystem::Init(const std::string& yaml_path) {
             imu_topic_, qos, [this](sensor_msgs::msg::Imu::SharedPtr msg) {
                 IMUPtr imu = std::make_shared<IMU>();
                 imu->timestamp = ToSec(msg->header.stamp);
-                imu->linear_acceleration =
-                    Vec3d(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-                imu->angular_velocity =
-                    Vec3d(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+                Vec3d acc(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+                Vec3d gyr(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+
+                imu->linear_acceleration = acc;
+                imu->angular_velocity = gyr;
 
                 ProcessIMU(imu);
             });
@@ -261,6 +268,11 @@ void SlamSystem::ProcessIMU(const lightning::IMUPtr& imu) {
     if (running_ == false) {
         return;
     }
+    
+    if (imu_in_g_) {
+        imu->linear_acceleration *= 9.80665;
+    }
+
     lio_->ProcessIMU(imu);
 }
 

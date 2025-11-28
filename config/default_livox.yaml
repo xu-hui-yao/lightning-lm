@@ -4,6 +4,7 @@ common:
   lidar_topic: "points_raw"
   livox_lidar_topic: "/livox/lidar"
   imu_topic: "/livox/imu"
+  imu_in_g: true
 
 # fasterlio 参数
 fasterlio:
@@ -67,6 +68,13 @@ loop_closing:
   max_range: 30.0       # 候选帧的最大距离
   ndt_score_th: 1.3     # ndt位姿分值
   with_height: true
+
+if_publish: true
+publish:
+  map_topic: "lightning/map"
+  pose_topic: "lightning/pose"
+  keyframe_topic: "lightning/keyframe_count"
+  interval: 1
 
 
 ### localization ================================================================================================

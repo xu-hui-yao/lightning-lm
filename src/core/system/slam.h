@@ -115,6 +115,7 @@ class SlamSystem {
     std::string map_pub_topic_;
     std::string pose_pub_topic_;
     std::string kf_count_pub_topic_;
+    bool imu_in_g_ = false;
 
     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> map_pub_ = nullptr;
     std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseArray>> pose_pub_ = nullptr;
